@@ -77,6 +77,7 @@ class Model:
             cfg.rope_theta ** (torch.arange(0, d, 2, dtype=torch.int64, device=device).float() / d)
         )
         self.scale = d**-0.5
+        self.lm_head_slices = 8 if str(device).startswith("mps") else 1
 
     @classmethod
     def from_dir(cls, path, device="cpu", dtype=torch.float32):
@@ -84,9 +85,9 @@ class Model:
         return cls(cfg, load_weights(path, device, dtype), device, dtype)
 
     def rms_norm(self, x, w):
-        xf = x.float()
-        xf = xf * torch.rsqrt(xf.pow(2).mean(-1, keepdim=True) + self.cfg.rms_eps)
-        return w * xf.to(x.dtype)
+        # normalise in float32 and round once, as the reference does; the
+        # fused kernel on a bf16 input rounds differently
+        return w * F.rms_norm(x.float(), (x.shape[-1],), None, self.cfg.rms_eps).to(x.dtype)
 
     def rope(self, positions):
         freqs = positions.float()[:, None] * self.inv_freq[None, :]
@@ -99,22 +100,27 @@ class Model:
         rot = torch.cat([-x[..., h:], x[..., :h]], dim=-1)
         return x * cos + rot * sin
 
-    def attention(self, q, k, v, k_cache, v_cache, batch: AttnBatch):
-        out = torch.empty_like(q)
+    def attention(self, qkv, cache, batch: AttnBatch):
+        nh, nkv = self.cfg.num_heads, self.cfg.num_kv_heads
+        outs = []
         for g in batch.groups:
-            s, e = g.start, g.start + g.b * g.q
-            qg = q[s:e].view(g.b, g.q, *q.shape[1:]).transpose(1, 2)
+            x = qkv[g.start : g.start + g.b * g.q].view(g.b, g.q, *qkv.shape[1:])
+            q = x[:, :, :nh].transpose(1, 2)
             if g.kv_slots is None:
                 # whole prompt is new: attend to the fresh keys, causal
-                kg = k[s:e].view(g.b, g.q, *k.shape[1:]).transpose(1, 2)
-                vg = v[s:e].view(g.b, g.q, *v.shape[1:]).transpose(1, 2)
-                o = F.scaled_dot_product_attention(qg, kg, vg, is_causal=True, scale=self.scale, enable_gqa=True)
+                kv, causal = x, True
             else:
-                kg = k_cache[g.kv_slots].transpose(1, 2)  # [b, kvh, ctx, d]
-                vg = v_cache[g.kv_slots].transpose(1, 2)
-                o = F.scaled_dot_product_attention(qg, kg, vg, attn_mask=g.mask, scale=self.scale, enable_gqa=True)
-            out[s:e] = o.transpose(1, 2).reshape(e - s, *q.shape[1:])
-        return out
+                # index_select is ~10x faster than cache[kv_slots] on mps
+                kv = cache.index_select(0, g.kv_slots.view(-1)).view(*g.kv_slots.shape, *cache.shape[1:])
+                causal = False  # kv: [b, ctx, 2 * kvh, d]
+            off = nh if causal else 0  # fresh rows hold q, k, v heads; cache rows hold k, v
+            k = kv[:, :, off : off + nkv].transpose(1, 2)
+            v = kv[:, :, off + nkv : off + 2 * nkv].transpose(1, 2)
+            o = F.scaled_dot_product_attention(
+                q, k, v, attn_mask=g.mask, is_causal=causal, scale=self.scale, enable_gqa=True
+            )
+            outs.append(o.transpose(1, 2).reshape(g.b * g.q, nh * self.cfg.head_dim))
+        return outs[0] if len(outs) == 1 else torch.cat(outs)
 
     @torch.inference_mode()
     def forward(self, input_ids, positions, batch: AttnBatch, kv_cache, logit_index):
@@ -127,21 +133,25 @@ class Model:
         x = self.embed[input_ids]
         for i, L in enumerate(self.layers):
             h = self.rms_norm(x, L["ln1"])
-            qkv = F.linear(h, L["qkv"], L["qkv_b"])
-            q, k, v = qkv.split([nh * d, nkv * d, nkv * d], dim=-1)
-            q = self.rotate(q.view(t, nh, d), cos, sin)
-            k = self.rotate(k.view(t, nkv, d), cos, sin)
-            v = v.view(t, nkv, d)
-            k_cache, v_cache = kv_cache[i, 0], kv_cache[i, 1]
-            k_cache.index_copy_(0, batch.slot_mapping, k)
-            v_cache.index_copy_(0, batch.slot_mapping, v)
-            o = self.attention(q, k, v, k_cache, v_cache, batch)
-            x = x + F.linear(o.view(t, nh * d), L["o"])
+            qkv = F.linear(h, L["qkv"], L["qkv_b"]).view(t, nh + 2 * nkv, d)
+            # rotate q and k heads together, in place
+            qkv[:, : nh + nkv] = self.rotate(qkv[:, : nh + nkv], cos, sin)
+            cache = kv_cache[i]
+            cache.index_copy_(0, batch.slot_mapping, qkv[:, nh:])
+            o = self.attention(qkv, cache, batch)
+            x = x + F.linear(o, L["o"])
             h = self.rms_norm(x, L["ln2"])
             gate, up = F.linear(h, L["gate_up"]).chunk(2, dim=-1)
             x = x + F.linear(F.silu(gate) * up, L["down"])
         x = self.rms_norm(x[logit_index], self.norm)
-        return F.linear(x, self.lm_head).float()
+        return self.logits(x)
+
+    def logits(self, x):
+        if self.lm_head_slices == 1 or x.shape[0] < 16:
+            return F.linear(x, self.lm_head).float()
+        # mps picks a slow kernel for [b >= 16, h] x [h, 150k]; eight vocab
+        # slices are 2.2x faster at b = 64
+        return torch.cat([F.linear(x, w) for w in self.lm_head.chunk(self.lm_head_slices)], dim=-1).float()
 
     def kv_bytes_per_token(self):
         c = self.cfg
@@ -149,6 +159,7 @@ class Model:
 
     def new_kv_cache(self, num_blocks, block_size):
         c = self.cfg
+        # one row per token slot: its k heads, then its v heads
         return torch.zeros(
-            c.num_layers, 2, num_blocks * block_size, c.num_kv_heads, c.head_dim, device=self.device, dtype=self.dtype
+            c.num_layers, num_blocks * block_size, 2 * c.num_kv_heads, c.head_dim, device=self.device, dtype=self.dtype
         )
