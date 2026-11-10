@@ -39,26 +39,25 @@ class Runner:
         by_q = defaultdict(list)
         for i, it in enumerate(items):
             by_q[len(it.tokens)].append(i)
-        order = [i for q in sorted(by_q) for i in by_q[q]]
 
-        ids, pos, slots, logit_rows = [], [], [], {}
+        ids, pos, slots, logit_index = [], [], [], []
+        rows = [None] * len(items)
         groups = []
         t = 0
-        n_rows = 0
         for q in sorted(by_q):
             members = by_q[q]
-            start_t = t
+            group_start = t
             for i in members:
                 it = items[i]
                 ids.extend(it.tokens)
                 pos.extend(range(it.start, it.start + q))
                 slots.append(self._slots(it.block_table, it.start, it.start + q))
-                logit_rows[i] = (n_rows, n_rows + it.n_logits, list(range(t + q - it.n_logits, t + q)))
-                n_rows += it.n_logits
+                rows[i] = (len(logit_index), len(logit_index) + it.n_logits)
+                logit_index.extend(range(t + q - it.n_logits, t + q))
                 t += q
             b = len(members)
             if all(items[i].start == 0 for i in members):
-                groups.append(AttnGroup(start_t, b, q, None, None))
+                groups.append(AttnGroup(group_start, b, q, None, None))
                 continue
             ctx = torch.tensor([items[i].start + q for i in members])
             maxc = int(ctx.max())
@@ -69,21 +68,13 @@ class Runner:
                 bt[r, : len(tab)] = torch.tensor(tab, dtype=torch.long)
             j = torch.arange(maxc)
             kv_slots = bt[:, j // bs] * bs + j % bs
-            # query r of a sequence sits at position ctx - q + r and sees
-            # every key at or before it
-            last = (ctx - q)[:, None, None] + torch.arange(q)[None, :, None]
-            mask = (j[None, None, :] <= last)[:, None]
-            groups.append(AttnGroup(start_t, b, q, kv_slots.to(dev), mask.to(dev)))
-
-        flat_index = []
-        for i in order:
-            flat_index.extend(logit_rows[i][2])
-        # logit rows come out in flat order; map each item to its slice
-        offsets, r = {}, 0
-        for i in order:
-            n = items[i].n_logits
-            offsets[i] = (r, r + n)
-            r += n
+            mask = None
+            if b > 1 or q > 1:
+                # query r of a sequence sits at position ctx - q + r and sees
+                # every key at or before it
+                last = (ctx - q)[:, None, None] + torch.arange(q)[None, :, None]
+                mask = (j[None, None, :] <= last)[:, None].to(dev)
+            groups.append(AttnGroup(group_start, b, q, kv_slots.to(dev), mask))
 
         batch = AttnBatch(torch.cat(slots).to(dev), groups)
         logits = self.model.forward(
@@ -91,8 +82,8 @@ class Runner:
             torch.tensor(pos, device=dev),
             batch,
             self.kv,
-            torch.tensor(flat_index, dtype=torch.long, device=dev),
+            torch.tensor(logit_index, dtype=torch.long, device=dev),
         )
         self.forward_calls += 1
         self.forward_tokens += t
-        return [logits[offsets[i][0] : offsets[i][1]] for i in range(len(items))]
+        return [logits[a:b] for a, b in rows]
