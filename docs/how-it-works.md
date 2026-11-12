@@ -106,7 +106,7 @@ The kernel computes decode attention straight from the block table, with one thr
 
 It is compiled at run time with `torch.mps.compile_shader` and matches the reference to 4e-7 in float32 (`tests/test_metal.py`).
 
-How the design got there (bf16, 64 sequences with contexts 100 to 1,000, then 256 sequences):
+How the design got there (bf16, 64 sequences with contexts 100 to 1,000, then 256 sequences). These were measured while another job was keeping the CPU busy, so compare rows with each other, not with the idle-machine numbers in the README:
 
 | version | 64 seqs | 256 seqs |
 |---|---|---|
@@ -115,7 +115,11 @@ How the design got there (bf16, 64 sequences with contexts 100 to 1,000, then 25
 | lane per key for scores, lane per dim for values | 0.69 ms | 1.84 ms |
 | plus 4 value rows in flight per simdgroup | 0.45 ms | 1.25 ms |
 
-The first version was slower than the baseline because each simdgroup had a single 128-byte load in flight at a time. At batch 1 the kernel launches only 2 threadgroups and loses to SDPA (0.25 vs 0.12 ms), so the runner uses it only for decode batches of 8 or more.
+The first version was slower than the baseline because each simdgroup had a single 128-byte load in flight at a time.
+
+With few sequences the kernel launches only 2 threadgroups per sequence, which leaves most of the GPU idle. On an idle machine it loses to SDPA at 1 sequence (0.24 vs 0.07 ms) and at 8 (0.15 vs 0.09 ms), ties at 16, and wins from 64 up. The runner therefore uses it only for decode batches of 32 or more.
+
+Splitting long contexts across several threadgroups (flash-decoding) would fix the small-batch case. It is not done. The kernel also reaches only about 70 GB/s at its best, a fraction of the M4 Pro's memory bandwidth, so there is room left.
 
 ## 9. Two things specific to PyTorch on MPS
 
