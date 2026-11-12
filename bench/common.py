@@ -51,3 +51,12 @@ def table(rows, cols):
     print("|" + "---|" * len(cols))
     for r in rows:
         print("| " + " | ".join(str(r.get(c, "")) for c in cols) + " |")
+
+
+def release():
+    """Engines hold gigabytes of mps memory; give it back between runs."""
+    import gc
+
+    gc.collect()
+    if torch.backends.mps.is_available():
+        torch.mps.empty_cache()

@@ -1,0 +1,47 @@
+{
+ "machine": {
+  "chip": "Apple M4 Pro",
+  "torch": "2.15.0",
+  "python": "3.12.13",
+  "load": 2.05029296875
+ },
+ "model": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+ "float32": {
+  "identical": 12,
+  "prompts": 12,
+  "tokens": 128,
+  "first_difference_at": [
+   128,
+   128,
+   128,
+   128,
+   128,
+   128,
+   128,
+   128,
+   128,
+   128,
+   128,
+   128
+  ]
+ },
+ "bfloat16": {
+  "identical": 8,
+  "prompts": 12,
+  "tokens": 128,
+  "first_difference_at": [
+   128,
+   44,
+   128,
+   66,
+   128,
+   128,
+   128,
+   12,
+   29,
+   128,
+   128,
+   128
+  ]
+ }
+}

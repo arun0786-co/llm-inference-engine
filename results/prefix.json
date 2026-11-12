@@ -1,0 +1,31 @@
+{
+ "machine": {
+  "chip": "Apple M4 Pro",
+  "torch": "2.15.0",
+  "python": "3.12.13",
+  "load": 1.97412109375
+ },
+ "model": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+ "requests": 64,
+ "shared_prefix_tokens": 2000,
+ "rows": [
+  {
+   "prefix cache": "off",
+   "seconds": 24.31,
+   "tokens run through the model": 131525,
+   "prompt tokens from cache": 0,
+   "mean ttft s": 11.97,
+   "max ttft s": 23.25
+  },
+  {
+   "prefix cache": "on",
+   "seconds": 3.01,
+   "tokens run through the model": 9429,
+   "prompt tokens from cache": 122064,
+   "mean ttft s": 1.56,
+   "max ttft s": 1.58
+  }
+ ],
+ "identical_outputs_bf16": "42/64",
+ "identical_outputs_float32": "16/16"
+}

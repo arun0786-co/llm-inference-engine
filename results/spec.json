@@ -1,0 +1,111 @@
+{
+ "machine": {
+  "chip": "Apple M4 Pro",
+  "torch": "2.15.0",
+  "python": "3.12.13",
+  "load": 0.86572265625
+ },
+ "target": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+ "draft": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+ "prompts": 12,
+ "max_tokens": 200,
+ "rows": [
+  {
+   "draft k": "none",
+   "batch": 1,
+   "temperature": 0.0,
+   "tok/s": 55.2,
+   "acceptance": "",
+   "tokens per target pass": 1,
+   "same text as target alone": "12/12"
+  },
+  {
+   "draft k": "0.5B model alone",
+   "batch": 1,
+   "temperature": 0.0,
+   "tok/s": 110.8,
+   "acceptance": "",
+   "tokens per target pass": 1
+  },
+  {
+   "draft k": 2,
+   "batch": 1,
+   "temperature": 0.0,
+   "tok/s": 69.0,
+   "acceptance": 0.913,
+   "tokens per target pass": 2.83,
+   "same text as target alone": "9/12"
+  },
+  {
+   "draft k": 3,
+   "batch": 1,
+   "temperature": 0.0,
+   "tok/s": 72.4,
+   "acceptance": 0.871,
+   "tokens per target pass": 3.61,
+   "same text as target alone": "9/12"
+  },
+  {
+   "draft k": 4,
+   "batch": 1,
+   "temperature": 0.0,
+   "tok/s": 73.5,
+   "acceptance": 0.838,
+   "tokens per target pass": 4.35,
+   "same text as target alone": "9/12"
+  },
+  {
+   "draft k": 6,
+   "batch": 1,
+   "temperature": 0.0,
+   "tok/s": 72.8,
+   "acceptance": 0.79,
+   "tokens per target pass": 5.74,
+   "same text as target alone": "9/12"
+  },
+  {
+   "draft k": 8,
+   "batch": 1,
+   "temperature": 0.0,
+   "tok/s": 69.2,
+   "acceptance": 0.738,
+   "tokens per target pass": 6.9,
+   "same text as target alone": "7/12"
+  },
+  {
+   "draft k": "none",
+   "batch": 12,
+   "temperature": 0.0,
+   "tok/s": 329.4,
+   "acceptance": "",
+   "tokens per target pass": 1,
+   "same text as target alone": "8/12"
+  },
+  {
+   "draft k": 4,
+   "batch": 12,
+   "temperature": 0.0,
+   "tok/s": 343.3,
+   "acceptance": 0.846,
+   "tokens per target pass": 4.38,
+   "same text as target alone": "10/12"
+  },
+  {
+   "draft k": "none",
+   "batch": 1,
+   "temperature": 0.7,
+   "tok/s": 54.4,
+   "acceptance": "",
+   "tokens per target pass": 1
+  },
+  {
+   "draft k": 4,
+   "batch": 1,
+   "temperature": 0.7,
+   "tok/s": 70.2,
+   "acceptance": 0.843,
+   "tokens per target pass": 4.37
+  }
+ ],
+ "float32_identical_k4": "6/6"
+}

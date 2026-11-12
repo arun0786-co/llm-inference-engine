@@ -20,6 +20,7 @@ def main():
     res = {}
     for dtype in (torch.float32, torch.bfloat16):
         eng = Engine(path, dtype=dtype, kv_cache_gb=1)
+        eng.runner.KERNEL_MIN_BATCH = 1  # 12 prompts: make sure the kernel runs
         ours = eng.generate(prompts, SamplingParams(max_tokens=n, ignore_eos=True))
         hf = AutoModelForCausalLM.from_pretrained(path, dtype=dtype).to("mps").eval()
         same, first_diff = 0, []

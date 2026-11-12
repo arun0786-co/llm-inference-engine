@@ -1,0 +1,27 @@
+{
+ "machine": {
+  "chip": "Apple M4 Pro",
+  "torch": "2.15.0",
+  "python": "3.12.13",
+  "load": 1.6669921875
+ },
+ "model": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+ "rows": [
+  {
+   "chunked prefill": "off",
+   "inter-token ms p50": 19.4,
+   "p99": 535.5,
+   "max": 535.9,
+   "long prompt ttft s (mean)": 0.53,
+   "total s": 11.8
+  },
+  {
+   "chunked prefill": "on, 512-token budget",
+   "inter-token ms p50": 33.1,
+   "p99": 118.5,
+   "max": 119.3,
+   "long prompt ttft s (mean)": 0.71,
+   "total s": 12.2
+  }
+ ]
+}

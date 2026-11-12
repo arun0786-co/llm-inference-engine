@@ -1,0 +1,73 @@
+{
+ "machine": {
+  "chip": "Apple M4 Pro",
+  "torch": "2.15.0",
+  "python": "3.12.13",
+  "load": 2.65087890625
+ },
+ "rows": [
+  {
+   "batch": 1,
+   "context": 200,
+   "kv read MB": 0.1,
+   "gather + sdpa ms": 0.068,
+   "kernel ms": 0.238,
+   "speedup": 0.29,
+   "kernel GB/s": 0.4
+  },
+  {
+   "batch": 8,
+   "context": 500,
+   "kv read MB": 2.0,
+   "gather + sdpa ms": 0.092,
+   "kernel ms": 0.152,
+   "speedup": 0.6,
+   "kernel GB/s": 12.5
+  },
+  {
+   "batch": 16,
+   "context": 500,
+   "kv read MB": 3.9,
+   "gather + sdpa ms": 0.142,
+   "kernel ms": 0.142,
+   "speedup": 1.0,
+   "kernel GB/s": 26.8
+  },
+  {
+   "batch": 64,
+   "context": 200,
+   "kv read MB": 6.2,
+   "gather + sdpa ms": 0.231,
+   "kernel ms": 0.157,
+   "speedup": 1.48,
+   "kernel GB/s": 38.9
+  },
+  {
+   "batch": 64,
+   "context": "100-1000",
+   "kv read MB": 18.3,
+   "gather + sdpa ms": 0.646,
+   "kernel ms": 0.401,
+   "speedup": 1.61,
+   "kernel GB/s": 44.6
+  },
+  {
+   "batch": 256,
+   "context": "100-1000",
+   "kv read MB": 69.5,
+   "gather + sdpa ms": 2.512,
+   "kernel ms": 1.153,
+   "speedup": 2.18,
+   "kernel GB/s": 58.8
+  },
+  {
+   "batch": 256,
+   "context": 1000,
+   "kv read MB": 125.0,
+   "gather + sdpa ms": 2.727,
+   "kernel ms": 1.749,
+   "speedup": 1.56,
+   "kernel GB/s": 69.8
+  }
+ ]
+}

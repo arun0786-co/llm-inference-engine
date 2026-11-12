@@ -1,0 +1,56 @@
+{
+ "machine": {
+  "chip": "Apple M4 Pro",
+  "torch": "2.15.0",
+  "python": "3.12.13",
+  "load": 1.36474609375
+ },
+ "model": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+ "requests": 256,
+ "useful_output_tokens": 66214,
+ "prompt_tokens": 70929,
+ "rows": [
+  {
+   "system": "engine: continuous batching, <= 256 seqs",
+   "seconds": 39.8,
+   "output tok/s": 1663,
+   "peak_running": 256,
+   "preemptions": 0,
+   "steps": 536
+  },
+  {
+   "system": "engine: same, gather + sdpa attention instead of the metal kernel",
+   "seconds": 45.1,
+   "output tok/s": 1469,
+   "peak_running": 256,
+   "preemptions": 0,
+   "steps": 536
+  },
+  {
+   "system": "engine: same, no chunked prefill",
+   "seconds": 39.8,
+   "output tok/s": 1664,
+   "peak_running": 256,
+   "preemptions": 0,
+   "steps": 536
+  },
+  {
+   "system": "engine: <= 64 seqs",
+   "seconds": 48.5,
+   "output tok/s": 1366,
+   "peak_running": 64,
+   "preemptions": 0,
+   "steps": 1331
+  },
+  {
+   "system": "transformers generate, static batches of 64",
+   "seconds": 115.9,
+   "output tok/s": 571
+  },
+  {
+   "system": "transformers generate, static batches of 16",
+   "seconds": 221.6,
+   "output tok/s": 299
+  }
+ ]
+}
