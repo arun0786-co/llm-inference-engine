@@ -16,6 +16,7 @@ import torch
 import torch.nn.functional as F
 from safetensors import safe_open
 
+from . import metal
 from .config import ModelConfig
 
 
@@ -29,6 +30,8 @@ class AttnGroup:
     q: int
     kv_slots: torch.Tensor | None  # [b, ctx] cache slots to read, None for a fresh prefill
     mask: torch.Tensor | None  # [b, 1, q, ctx] bool, True = may attend
+    tables: torch.Tensor | None = None  # [b, blocks] int32, set when the metal kernel runs
+    ctx_lens: torch.Tensor | None = None  # [b] int32
 
 
 @dataclass
@@ -78,6 +81,9 @@ class Model:
         )
         self.scale = d**-0.5
         self.lm_head_slices = 8 if str(device).startswith("mps") else 1
+        self.block_size = None  # set by the runner
+        on_mps = str(device).startswith("mps")
+        self.paged_kernel = on_mps and metal.available(dtype, d, cfg.num_heads // cfg.num_kv_heads)
 
     @classmethod
     def from_dir(cls, path, device="cpu", dtype=torch.float32):
@@ -105,6 +111,10 @@ class Model:
         outs = []
         for g in batch.groups:
             x = qkv[g.start : g.start + g.b * g.q].view(g.b, g.q, *qkv.shape[1:])
+            if g.tables is not None:
+                o = metal.paged_decode(x[:, 0, :nh], cache, g.tables, g.ctx_lens, nkv, self.block_size, self.scale)
+                outs.append(o.view(g.b, nh * self.cfg.head_dim))
+                continue
             q = x[:, :, :nh].transpose(1, 2)
             if g.kv_slots is None:
                 # whole prompt is new: attend to the fresh keys, causal

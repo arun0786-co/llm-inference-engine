@@ -17,9 +17,15 @@ class Item:
 
 
 class Runner:
-    def __init__(self, model: Model, num_blocks, block_size):
+    # decode batches at least this big use the metal kernel; below it the
+    # kernel has too few threadgroups to beat gather + sdpa
+    KERNEL_MIN_BATCH = 8
+
+    def __init__(self, model: Model, num_blocks, block_size, paged_kernel=True):
         self.model = model
         self.block_size = block_size
+        model.block_size = block_size
+        self.paged_kernel = paged_kernel and model.paged_kernel
         self.kv = model.new_kv_cache(num_blocks, block_size)
         self.forward_calls = 0
         self.forward_tokens = 0
@@ -66,6 +72,11 @@ class Runner:
             for r, i in enumerate(members):
                 tab = items[i].block_table[:nb]
                 bt[r, : len(tab)] = torch.tensor(tab, dtype=torch.long)
+            if q == 1 and self.paged_kernel and b >= self.KERNEL_MIN_BATCH:
+                groups.append(
+                    AttnGroup(group_start, b, q, None, None, bt.to(torch.int32).to(dev), ctx.to(torch.int32).to(dev))
+                )
+                continue
             j = torch.arange(maxc)
             kv_slots = bt[:, j // bs] * bs + j % bs
             mask = None

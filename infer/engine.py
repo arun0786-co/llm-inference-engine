@@ -42,6 +42,7 @@ class Engine:
         chunked_prefill=True,
         draft_model_path=None,
         num_spec_tokens=4,
+        paged_kernel=True,
     ):
         self.device = device or default_device()
         if dtype is None:
@@ -52,7 +53,7 @@ class Engine:
             num_blocks = int(kv_cache_gb * 2**30 // (self.model.kv_bytes_per_token() * block_size))
         self.block_size = block_size
         self.bm = BlockManager(num_blocks, block_size, prefix_caching)
-        self.runner = Runner(self.model, num_blocks, block_size)
+        self.runner = Runner(self.model, num_blocks, block_size, paged_kernel)
 
         self.k = num_spec_tokens if draft_model_path else 0
         self.draft = None
@@ -63,7 +64,7 @@ class Engine:
             # the draft caches the same tokens plus at most k, and shares
             # prefixes the same way; the margin covers timing differences
             self.draft_bm = BlockManager(num_blocks + num_blocks // 4, block_size, prefix_caching)
-            self.draft_runner = Runner(self.draft, self.draft_bm.num_blocks, block_size)
+            self.draft_runner = Runner(self.draft, self.draft_bm.num_blocks, block_size, paged_kernel)
 
         self.sched = Scheduler(self.bm, max_num_seqs, max_batched_tokens, chunked_prefill, lookahead=self.k)
         if self.draft:
