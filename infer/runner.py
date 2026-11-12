@@ -18,8 +18,9 @@ class Item:
 
 class Runner:
     # decode batches at least this big use the metal kernel; below it the
-    # kernel has too few threadgroups to beat gather + sdpa
-    KERNEL_MIN_BATCH = 8
+    # kernel has too few threadgroups to beat gather + sdpa (measured: 0.6x
+    # at 8 sequences, even at 16, 1.5x at 64; bench/attention.py)
+    KERNEL_MIN_BATCH = 32
 
     def __init__(self, model: Model, num_blocks, block_size, paged_kernel=True):
         self.model = model

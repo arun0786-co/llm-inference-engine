@@ -47,4 +47,5 @@ def test_engine_same_output_with_kernel(tmp_path):
     on = Engine(path, **kw)
     off = Engine(path, paged_kernel=False, **kw)
     assert on.runner.paged_kernel
+    on.runner.KERNEL_MIN_BATCH = 1  # use the kernel for every decode batch
     assert on.generate(ps, sp) == off.generate(ps, sp)

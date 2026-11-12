@@ -68,11 +68,14 @@ class Engine:
 
         self.sched = Scheduler(self.bm, max_num_seqs, max_batched_tokens, chunked_prefill, lookahead=self.k)
         if self.draft:
-            self.sched.on_preempt = lambda s: self.draft_bm.free(s.draft)
+            self.sched.on_preempt = self._free_draft
         self.steps = 0
         self.spec_steps = 0  # per sequence verify passes
         self.spec_proposed = 0
         self.spec_accepted = 0
+
+    def _free_draft(self, seq):
+        self.draft_bm.free(seq.draft)
 
     # requests
 
