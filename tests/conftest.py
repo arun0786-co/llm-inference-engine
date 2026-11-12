@@ -2,7 +2,7 @@ import pytest
 import torch
 
 
-def make_tiny(path, kind="llama", vocab=256, seed=0, layers=2):
+def make_tiny(path, kind="llama", vocab=256, seed=0, layers=2, hidden=64):
     """Saves a small random checkpoint with transformers, so tests need no
     download and compare against the reference implementation."""
     import transformers
@@ -10,8 +10,8 @@ def make_tiny(path, kind="llama", vocab=256, seed=0, layers=2):
     torch.manual_seed(seed)
     common = dict(
         vocab_size=vocab,
-        hidden_size=64,
-        intermediate_size=128,
+        hidden_size=hidden,
+        intermediate_size=2 * hidden,
         num_hidden_layers=layers,
         num_attention_heads=4,
         num_key_value_heads=2,
