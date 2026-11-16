@@ -20,6 +20,14 @@ def default_device():
     return "cpu"
 
 
+def default_dtype(device):
+    if device == "cpu":
+        return torch.float32
+    if str(device).startswith("cuda") and torch.cuda.get_device_capability()[0] < 8:
+        return torch.float16  # no native bf16 before Ampere (the 2080 Ti is 7.5)
+    return torch.bfloat16
+
+
 def sync(device):
     if device == "mps":
         torch.mps.synchronize()
@@ -46,7 +54,7 @@ class Engine:
     ):
         self.device = device or default_device()
         if dtype is None:
-            dtype = torch.float32 if self.device == "cpu" else torch.bfloat16
+            dtype = default_dtype(self.device)
         self.model = Model.from_dir(model_path, self.device, dtype)
         self.eos_ids = self.model.cfg.eos_token_ids
         if num_blocks is None:
