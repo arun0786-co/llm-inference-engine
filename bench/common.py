@@ -21,8 +21,13 @@ def machine():
     chip = platform.processor()
     if sys.platform == "darwin":
         chip = subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string"], capture_output=True, text=True).stdout.strip()
-    # load average at the start: other jobs on the machine slow the python side
-    return {"chip": chip, "torch": torch.__version__, "python": platform.python_version(), "load": os.getloadavg()[0]}
+    out = {"chip": chip, "torch": torch.__version__, "python": platform.python_version(),
+           # load average at the start: other jobs on the machine slow the python side
+           "load": os.getloadavg()[0]}
+    if torch.cuda.is_available():
+        out["gpu"] = torch.cuda.get_device_name(0)
+        out["host"] = platform.node()
+    return out
 
 
 class Timer:
@@ -54,9 +59,11 @@ def table(rows, cols):
 
 
 def release():
-    """Engines hold gigabytes of mps memory; give it back between runs."""
+    """Engines hold gigabytes of gpu memory; give it back between runs."""
     import gc
 
     gc.collect()
     if torch.backends.mps.is_available():
         torch.mps.empty_cache()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
