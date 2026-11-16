@@ -16,7 +16,7 @@ import torch
 import torch.nn.functional as F
 from safetensors import safe_open
 
-from . import metal
+from . import cuda_attn, metal
 from .config import ModelConfig
 
 
@@ -82,8 +82,13 @@ class Model:
         self.scale = d**-0.5
         self.lm_head_slices = 8 if str(device).startswith("mps") else 1
         self.block_size = None  # set by the runner
-        on_mps = str(device).startswith("mps")
-        self.paged_kernel = on_mps and metal.available(dtype, d, cfg.num_heads // cfg.num_kv_heads)
+        group = cfg.num_heads // cfg.num_kv_heads
+        self._kernel = None
+        if str(device).startswith("mps") and metal.available(dtype, d, group):
+            self._kernel = metal.paged_decode
+        elif str(device).startswith("cuda") and cuda_attn.available(dtype, d, group):
+            self._kernel = cuda_attn.paged_decode
+        self.paged_kernel = self._kernel is not None
 
     @classmethod
     def from_dir(cls, path, device="cpu", dtype=torch.float32):
@@ -112,7 +117,7 @@ class Model:
         for g in batch.groups:
             x = qkv[g.start : g.start + g.b * g.q].view(g.b, g.q, *qkv.shape[1:])
             if g.tables is not None:
-                o = metal.paged_decode(x[:, 0, :nh], cache, g.tables, g.ctx_lens, nkv, self.block_size, self.scale)
+                o = self._kernel(x[:, 0, :nh], cache, g.tables, g.ctx_lens, nkv, self.block_size, self.scale)
                 outs.append(o.view(g.b, nh * self.cfg.head_dim))
                 continue
             q = x[:, :, :nh].transpose(1, 2)
