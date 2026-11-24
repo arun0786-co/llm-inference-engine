@@ -89,6 +89,11 @@ class Model:
         elif str(device).startswith("cuda") and cuda_attn.available(dtype, d, group):
             self._kernel = cuda_attn.paged_decode
         self.paged_kernel = self._kernel is not None
+        # smallest decode batch that uses the kernel: the metal kernel has too
+        # few threadgroups to beat gather + sdpa below about 32 sequences
+        # (0.6x at 8, even at 16, 1.5x at 64); the cuda one wins from 1
+        # sequence up (7x on a t4). bench/attention.py
+        self.kernel_min_batch = 32 if str(device).startswith("mps") else 1
 
     @classmethod
     def from_dir(cls, path, device="cpu", dtype=torch.float32):

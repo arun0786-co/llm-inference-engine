@@ -22,7 +22,7 @@ def main():
     res = {}
     for dtype in (torch.float32, default_dtype(dev)):
         eng = Engine(path, dtype=dtype, kv_cache_gb=1)
-        eng.runner.KERNEL_MIN_BATCH = 1  # 12 prompts: make sure the kernel runs
+        eng.runner.kernel_min_batch = 1  # 12 prompts: make sure the kernel runs
         ours = eng.generate(prompts, SamplingParams(max_tokens=n, ignore_eos=True))
         del eng
         hf = AutoModelForCausalLM.from_pretrained(path, dtype=dtype).to(dev).eval()
