@@ -32,22 +32,27 @@ def main():
               max_num_seqs=256, max_num_batched_tokens=4096, seed=0)
     llm.generate([{"prompt_token_ids": prompts[0][:16]}], SamplingParams(max_tokens=8), use_tqdm=False)
     params = [SamplingParams(max_tokens=o, ignore_eos=True, temperature=0.0) for o in outs]
-    torch.cuda.synchronize()
-    t = time.perf_counter()
-    res = llm.generate([{"prompt_token_ids": p} for p in prompts], params, use_tqdm=False)
-    torch.cuda.synchronize()
-    secs = time.perf_counter() - t
-    produced = sum(len(r.outputs[0].token_ids) for r in res)
-    assert produced == useful, (produced, useful)
-    row = {"system": f"vLLM {vllm.__version__}", "seconds": round(secs, 1), "output tok/s": round(useful / secs)}
-    print(row, flush=True)
+    # twice: the first run can include Triton compiling kernels for shapes
+    # the warm-up did not hit
+    rows = []
+    for run in (1, 2):
+        torch.cuda.synchronize()
+        t = time.perf_counter()
+        res = llm.generate([{"prompt_token_ids": p} for p in prompts], params, use_tqdm=False)
+        torch.cuda.synchronize()
+        secs = time.perf_counter() - t
+        produced = sum(len(r.outputs[0].token_ids) for r in res)
+        assert produced == useful, (produced, useful)
+        rows.append({"system": f"vLLM {vllm.__version__}, run {run}", "seconds": round(secs, 1),
+                     "output tok/s": round(useful / secs)})
+        print(rows[-1], flush=True)
     gpu = torch.cuda.get_device_name(0).lower().replace("nvidia", "").replace("geforce", "")
     name = "vllm_throughput_" + "".join(c for c in gpu if c.isalnum())
     os.makedirs(RESULTS, exist_ok=True)
     with open(os.path.join(RESULTS, name + ".json"), "w") as f:
         json.dump({"machine": {"gpu": torch.cuda.get_device_name(0), "host": platform.node(),
                                "torch": torch.__version__, "vllm": vllm.__version__},
-                   "model": a.model, "requests": a.n, "useful_output_tokens": useful, "rows": [row]}, f, indent=1)
+                   "model": a.model, "requests": a.n, "useful_output_tokens": useful, "rows": rows}, f, indent=1)
 
 
 if __name__ == "__main__":
