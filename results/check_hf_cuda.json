@@ -1,0 +1,50 @@
+{
+ "machine": {
+  "chip": "x86_64",
+  "torch": "2.11.0+cu130",
+  "python": "3.13.16",
+  "load": 1.7568359375,
+  "gpu": "Tesla T4",
+  "host": "39f5675d5803"
+ },
+ "model": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+ "device": "cuda",
+ "float32": {
+  "identical": 12,
+  "prompts": 12,
+  "tokens": 128,
+  "first_difference_at": [
+   128,
+   128,
+   128,
+   128,
+   128,
+   128,
+   128,
+   128,
+   128,
+   128,
+   128,
+   128
+  ]
+ },
+ "float16": {
+  "identical": 12,
+  "prompts": 12,
+  "tokens": 128,
+  "first_difference_at": [
+   128,
+   128,
+   128,
+   128,
+   128,
+   128,
+   128,
+   128,
+   128,
+   128,
+   128,
+   128
+  ]
+ }
+}

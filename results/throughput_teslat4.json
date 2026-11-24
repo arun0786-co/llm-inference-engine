@@ -1,0 +1,60 @@
+{
+ "machine": {
+  "chip": "x86_64",
+  "torch": "2.11.0+cu130",
+  "python": "3.13.16",
+  "load": 1.0,
+  "gpu": "Tesla T4",
+  "host": "39f5675d5803"
+ },
+ "model": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+ "device": "cuda",
+ "dtype": "torch.float16",
+ "requests": 256,
+ "useful_output_tokens": 66214,
+ "prompt_tokens": 70929,
+ "rows": [
+  {
+   "system": "engine: continuous batching, <= 256 seqs",
+   "seconds": 19.6,
+   "output tok/s": 3370,
+   "peak_running": 256,
+   "preemptions": 0,
+   "steps": 536
+  },
+  {
+   "system": "engine: same, gather + sdpa attention instead of the cuda kernel",
+   "seconds": 138.3,
+   "output tok/s": 479,
+   "peak_running": 256,
+   "preemptions": 0,
+   "steps": 536
+  },
+  {
+   "system": "engine: same, no chunked prefill",
+   "seconds": 20.0,
+   "output tok/s": 3312,
+   "peak_running": 256,
+   "preemptions": 0,
+   "steps": 536
+  },
+  {
+   "system": "engine: <= 64 seqs",
+   "seconds": 29.8,
+   "output tok/s": 2226,
+   "peak_running": 64,
+   "preemptions": 0,
+   "steps": 1331
+  },
+  {
+   "system": "transformers generate, static batches of 64",
+   "seconds": 175.4,
+   "output tok/s": 377
+  },
+  {
+   "system": "transformers generate, static batches of 16",
+   "seconds": 250.4,
+   "output tok/s": 264
+  }
+ ]
+}

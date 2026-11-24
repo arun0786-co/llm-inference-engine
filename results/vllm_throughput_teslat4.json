@@ -1,0 +1,23 @@
+{
+ "machine": {
+  "gpu": "Tesla T4",
+  "host": "39f5675d5803",
+  "torch": "2.14.0+cu130",
+  "vllm": "0.34.0"
+ },
+ "model": "/root/.cache/huggingface/hub/models--Qwen--Qwen2.5-Coder-0.5B-Instruct/snapshots/ea3f2471cf1b1f0db85067f1ef93848e38e88c25",
+ "requests": 256,
+ "useful_output_tokens": 66214,
+ "rows": [
+  {
+   "system": "vLLM 0.34.0, run 1",
+   "seconds": 18.6,
+   "output tok/s": 3558
+  },
+  {
+   "system": "vLLM 0.34.0, run 2",
+   "seconds": 15.5,
+   "output tok/s": 4285
+  }
+ ]
+}

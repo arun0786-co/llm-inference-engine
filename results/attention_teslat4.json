@@ -1,0 +1,77 @@
+{
+ "machine": {
+  "chip": "x86_64",
+  "torch": "2.11.0+cu130",
+  "python": "3.13.16",
+  "load": 2.30908203125,
+  "gpu": "Tesla T4",
+  "host": "39f5675d5803"
+ },
+ "device": "cuda",
+ "dtype": "torch.float16",
+ "rows": [
+  {
+   "batch": 1,
+   "context": 200,
+   "kv read MB": 0.1,
+   "gather + sdpa ms": 0.378,
+   "kernel ms": 0.044,
+   "speedup": 8.54,
+   "kernel GB/s": 2.2
+  },
+  {
+   "batch": 8,
+   "context": 500,
+   "kv read MB": 2.0,
+   "gather + sdpa ms": 0.569,
+   "kernel ms": 0.076,
+   "speedup": 7.53,
+   "kernel GB/s": 25.2
+  },
+  {
+   "batch": 16,
+   "context": 500,
+   "kv read MB": 3.9,
+   "gather + sdpa ms": 1.042,
+   "kernel ms": 0.082,
+   "speedup": 12.68,
+   "kernel GB/s": 46.4
+  },
+  {
+   "batch": 64,
+   "context": 200,
+   "kv read MB": 6.2,
+   "gather + sdpa ms": 1.753,
+   "kernel ms": 0.072,
+   "speedup": 24.42,
+   "kernel GB/s": 85.0
+  },
+  {
+   "batch": 64,
+   "context": "100-1000",
+   "kv read MB": 18.3,
+   "gather + sdpa ms": 6.792,
+   "kernel ms": 0.162,
+   "speedup": 41.97,
+   "kernel GB/s": 110.5
+  },
+  {
+   "batch": 256,
+   "context": "100-1000",
+   "kv read MB": 69.5,
+   "gather + sdpa ms": 27.346,
+   "kernel ms": 0.472,
+   "speedup": 57.91,
+   "kernel GB/s": 143.6
+  },
+  {
+   "batch": 256,
+   "context": 1000,
+   "kv read MB": 125.0,
+   "gather + sdpa ms": 27.512,
+   "kernel ms": 0.856,
+   "speedup": 32.16,
+   "kernel GB/s": 142.7
+  }
+ ]
+}
