@@ -1,0 +1,19 @@
+# bench/sdpa_backends.py on a Kaggle T4 (the same code, run as a job script), stdout
+Tesla T4, 580.178.04
+Tesla T4, 580.178.04
+torch 2.11.0+cu130 Tesla T4
+enable_gqa, mask (the baseline): default 27.576 ms
+  FLASH_ATTENTION: not available (No available kernel. Aborting execution.)
+  EFFICIENT_ATTENTION: not available (No available kernel. Aborting execution.)
+  CUDNN_ATTENTION: not available (No available kernel. Aborting execution.)
+  MATH: 26.534 ms
+kv repeated, mask: default 5.352 ms
+  FLASH_ATTENTION: not available (No available kernel. Aborting execution.)
+  EFFICIENT_ATTENTION: 5.455 ms
+  CUDNN_ATTENTION: not available (No available kernel. Aborting execution.)
+  MATH: 28.514 ms
+enable_gqa, no mask: default 26.364 ms
+  FLASH_ATTENTION: not available (No available kernel. Aborting execution.)
+  EFFICIENT_ATTENTION: not available (No available kernel. Aborting execution.)
+  CUDNN_ATTENTION: not available (No available kernel. Aborting execution.)
+  MATH: 26.364 ms
