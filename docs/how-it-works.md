@@ -121,13 +121,25 @@ With few sequences the kernel launches only 2 threadgroups per sequence, which l
 
 Splitting long contexts across several threadgroups (flash-decoding) would fix the small-batch case. It is not done. The kernel also reaches only about 70 GB/s at its best, a fraction of the M4 Pro's memory bandwidth, so there is room left.
 
-## 9. Two things specific to PyTorch on MPS
+## 9. The CUDA kernel (`cuda_attn.py`)
+
+The same design, mapped onto CUDA: a block of 4 warps per (sequence, kv head), a lane per key for the scores, the online softmax with `__shfl_xor_sync` reductions, then 8 head dims per lane for the values, and the warps merged through shared memory. What differs:
+- **Templates.** One instantiation per element type (`float`, `__half`) and head dim (64, 128), so loop bounds are compile-time constants. The per-query-head state (running max, sum, 8 accumulators) sits in arrays indexed by loops unrolled to the maximum of 8 heads with an `if (g < G)` guard. With a runtime bound the compiler would have to put those arrays in local memory instead of registers.
+- **Loads.** A lane reads its 8 dims with one 16-byte load: two `float4` in float32, one `uint4` of eight halves in float16, converted to float. All arithmetic is float32.
+- **Building.** `torch.utils.cpp_extension.load_inline` compiles it with nvcc on first use and caches the build.
+- **float16 on Turing.** The T4 has no bfloat16 arithmetic, so `default_dtype` picks float16 below compute capability 8.0.
+
+It was written on the Mac without an NVIDIA GPU, and passed its 9 tests on the first run on a T4. There it reaches 143 GB/s, 45% of the card's bandwidth. It beats the baseline at every batch size, even one sequence, so on CUDA the runner uses it for all decode batches.
+
+Part of that margin is the baseline's fault. `bench/sdpa_backends.py` shows that on Turing no fused SDPA kernel takes a grouped-query call with a mask: flash attention needs sm_80, and the memory-efficient kernel wants equal head counts. So SDPA runs its unfused math path (27.6 ms at 256 × 1,000). Repeating K and V to 14 heads first lets the memory-efficient kernel run (5.35 ms, not counting the repeat). The kernel, at 0.86 ms, is 6.3x faster than that.
+
+## 10. Two things specific to PyTorch on MPS
 
 Both were found by profiling.
 - **Gathering.** `cache[index]` (advanced indexing) gathers about 10x slower than `cache.index_select(0, index)`: 0.39 ms vs 0.036 ms for 64 × 200 rows.
 - **The vocabulary projection.** For `[b, 896] × [896, 151936]`, MPS picks a much slower matmul kernel once b reaches 16 (1.2 ms at b = 8, 5.3 ms at b = 16). Splitting the vocabulary into 8 slices and concatenating takes 3.5 ms at b = 64 instead of 7.7 ms.
 
-## 10. Server (`server.py`)
+## 11. Server (`server.py`)
 
 `ThreadingHTTPServer` handles the connections. One background thread owns the engine and loops on `step()`. Handler threads put requests on a queue and read their tokens back from a per-request queue, so the engine needs no lock. Streaming uses server-sent events in the OpenAI chunk format. The detokenizer holds back text ending in a partial UTF-8 character. A client that disconnects is aborted, and its blocks are freed.
 
