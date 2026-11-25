@@ -40,6 +40,10 @@ Unless a heading says otherwise, the numbers are from an Apple M4 Pro (12-core C
 - **Continuous batching avoids that.** A finished request leaves immediately and the next one takes its place. The paged cache fits all 256 in a 4 GB KV cache with no preemptions.
 - **Kernel and chunking.** The Metal kernel adds 13% end to end. Chunked prefill costs nothing here; what it buys is latency (below).
 
+![throughput on the M4 Pro and the T4](docs/images/throughput.png)
+
+*Output tokens per second on the same 256-request workload, from `results/throughput.json`, `results/throughput_teslat4.json` and `results/vllm_throughput_teslat4.json`.*
+
 ### Prefix caching (`bench/prefix.py`)
 
 64 requests share a 2,000-token prefix, each adding its own 10 to 40 token question, and all arrive at once. Each generates 32 tokens.
@@ -50,6 +54,10 @@ Unless a heading says otherwise, the numbers are from an Apple M4 Pro (12-core C
 | on | 3.01 | 9,429 | 122,064 | 1.56 s | 1.58 s |
 
 The first request computes the prefix; the other 63 attach its blocks. Outputs are identical with and without the cache in float32 (16 of 16). In bf16, 42 of 64 are identical, because the cached keys were computed in a different batch shape and so rounded differently.
+
+![prefix cache off and on](docs/images/prefix_cache.png)
+
+*Total time and time to first token with the prefix cache off and on, from `results/prefix.json`.*
 
 ### Chunked prefill and latency (`bench/latency.py`)
 
@@ -62,6 +70,10 @@ The first request computes the prefix; the other 63 attach its blocks. Outputs a
 
 - **Without chunking**, each long prompt runs in one 0.5 s step, and every user who is mid-answer sees their output freeze.
 - **With chunking**, the prompt is spread over six steps. The worst pause drops 4.5x, at the price of slower typical steps and a slightly later first token for the long prompts.
+
+![inter-token latency with and without chunked prefill](docs/images/latency.png)
+
+*Gaps between tokens of the 32 decoding requests, from `results/latency.json`.*
 
 ### Speculative decoding (`bench/spec.py`)
 
@@ -149,6 +161,10 @@ One T4 (Turing, sm_75, 16 GB, 320 GB/s) in a Kaggle job: driver 580, CUDA 13.0, 
 - The CUDA kernel takes 0.86 ms, so 6.3x is the fair comparison. It reads 143 GB/s, 45% of the T4's bandwidth.
 
 Unlike the Metal kernel, it is faster than the baseline even for one sequence, so on CUDA the runner uses it for every decode batch.
+
+![decode attention kernel against gather + SDPA](docs/images/attention_kernel.png)
+
+*Time per decode attention call, log scale, from `results/attention.json` and `results/attention_teslat4.json`. On the T4 the baseline is SDPA's unfused fallback, so the fair speedup there is 6.3x (see above).*
 
 ## Correctness
 
